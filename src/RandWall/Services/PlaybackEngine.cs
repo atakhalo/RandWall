@@ -155,6 +155,44 @@ public sealed class PlaybackEngine : IDisposable
         return _nextPreview;
     }
 
+    /// <summary>
+    /// 随机模式下重新抽取下一组：把当前预览的候选组放弃，从它之后的状态再抽一组。
+    /// 下一次真正切换会使用重抽后的结果；连续重抽会沿随机袋继续往后走。
+    /// </summary>
+    public WallpaperGroup? RerollNextGroup()
+    {
+        if (_disposed || _library.Files.Count == 0)
+        {
+            return null;
+        }
+
+        if (_settings.Mode != PlaybackMode.Random)
+        {
+            return PeekNextGroup();
+        }
+
+        // 已有预览时，先把引擎状态推进到「这一组已经切换过」，再抽下一组
+        if (_nextPreviewValid && _nextPreview is not null)
+        {
+            RestoreState(_nextPreviewAfterState);
+            InvalidateNextPreview();
+        }
+
+        var before = SnapshotState();
+        try
+        {
+            _nextPreview = BuildGroup();
+            _nextPreviewAfterState = SnapshotState();
+        }
+        finally
+        {
+            RestoreState(before);
+        }
+
+        _nextPreviewValid = _nextPreview is not null;
+        return _nextPreview;
+    }
+
     /// <summary>启动流程：扫描壁纸、恢复上次状态或立即应用一组。</summary>
     public async Task StartAsync(bool restoreLastGroup)
     {

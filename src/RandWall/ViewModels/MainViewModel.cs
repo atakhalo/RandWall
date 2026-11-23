@@ -23,6 +23,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly PlaybackEngine _engine;
     private readonly ThumbnailService _thumbnails;
     private readonly AutoStartService _autoStart;
+    private readonly UpdateService _updates;
     private readonly DispatcherTimer _saveTimer;
 
     private int _selectedSection;
@@ -33,6 +34,11 @@ public sealed class MainViewModel : ObservableObject
     private bool _suppressSettingsSync;
     private string _statusMessage = string.Empty;
     private CancellationTokenSource? _thumbnailCts;
+
+    private Version? _latestVersion;
+    private string _latestReleaseUrl = UpdateService.ReleasesUrl;
+    private bool _updateChecking;
+    private string _updateStatusText = string.Empty;
 
     private static readonly IntervalUnitOption UnitMinutes = new(60, "分钟", IntervalUnit.Minutes);
     private static readonly IntervalUnitOption UnitHours = new(3600, "小时", IntervalUnit.Hours);
@@ -48,13 +54,15 @@ public sealed class MainViewModel : ObservableObject
         AppSettings settings,
         PlaybackEngine engine,
         ThumbnailService thumbnails,
-        AutoStartService autoStart)
+        AutoStartService autoStart,
+        UpdateService updates)
     {
         _settings = settings;
         _settingsService = settingsService;
         _engine = engine;
         _thumbnails = thumbnails;
         _autoStart = autoStart;
+        _updates = updates;
 
         _saveTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
         _saveTimer.Tick += (_, _) =>
@@ -87,6 +95,7 @@ public sealed class MainViewModel : ObservableObject
 
         NextCommand = new RelayCommand(() => _ = _engine.ApplyNextAsync(), () => HasWallpapers && !IsBusy);
         PreviousCommand = new RelayCommand(() => _ = _engine.ApplyPreviousAsync(), () => _engine.History.Count > 1);
+        RerollNextCommand = new RelayCommand(RerollNextPreview, () => HasWallpapers && IsRandom);
         TogglePauseCommand = new RelayCommand(() => _engine.TogglePause(), () => HasWallpapers);
         RefreshCommand = new RelayCommand(() => _ = RescanAsync());
         RemoveFolderCommand = new RelayCommand<FolderItemViewModel>(item => _ = RemoveFolderAsync(item));
@@ -96,6 +105,10 @@ public sealed class MainViewModel : ObservableObject
         SetIntervalCommand = new RelayCommand<string>(SetInterval);
         SelectPreviewTabCommand = new RelayCommand<string>(SelectPreviewTab);
         OpenDataFolderCommand = new RelayCommand(OpenDataFolder);
+        CheckUpdateCommand = new RelayCommand(() => _ = CheckForUpdatesAsync(manual: true), () => !_updateChecking);
+        OpenGitHubCommand = new RelayCommand(() => OpenUrl(UpdateService.RepositoryUrl));
+        OpenReleasesCommand = new RelayCommand(() => OpenUrl(_latestReleaseUrl));
+        IgnoreUpdateCommand = new RelayCommand(IgnoreUpdate, () => ShowUpdateBadge);
 
         _engine.Changed += OnEngineChanged;
         _engine.Tick += OnEngineTick;
@@ -228,6 +241,8 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand NextCommand { get; }
 
     public RelayCommand PreviousCommand { get; }
+
+    public RelayCommand RerollNextCommand { get; }
 
     public RelayCommand TogglePauseCommand { get; }
 
@@ -595,6 +610,7 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(IsCurrentTab));
             OnPropertyChanged(nameof(IsPreviousTab));
             OnPropertyChanged(nameof(IsNextTab));
+            OnPropertyChanged(nameof(ShowRerollButton));
             OnPropertyChanged(nameof(PreviewCaption));
             UpdateMonitorCards();
         }
@@ -605,6 +621,9 @@ public sealed class MainViewModel : ObservableObject
     public bool IsPreviousTab => _selectedPreviewTab == 1;
 
     public bool IsNextTab => _selectedPreviewTab == 2;
+
+    /// <summary>「重 roll」只在随机模式的「下一组」页签上出现。</summary>
+    public bool ShowRerollButton => _selectedPreviewTab == 2 && IsRandom && HasWallpapers;
 
     public string PreviewCaption => _selectedPreviewTab switch
     {
@@ -747,7 +766,35 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>GitHub 仓库地址。</summary>
+    public string GitHubUrl => UpdateService.RepositoryUrl;
+
+    /// <summary>发现比当前更新的正式版本（无论是否忽略）。</summary>
+    public bool HasUpdate => _latestVersion is not null && _latestVersion > _updates.CurrentVersion;
+
+    /// <summary>该新版本已被用户忽略。</summary>
+    public bool IsUpdateIgnored => HasUpdate && IsVersionIgnored(_latestVersion!);
+
+    /// <summary>红点：有新版本且未被忽略。</summary>
+    public bool ShowUpdateBadge => HasUpdate && !IsUpdateIgnored;
+
+    public bool IsUpdateChecking => _updateChecking;
+
+    public string UpdateStatusText
+    {
+        get => _updateStatusText;
+        private set => SetProperty(ref _updateStatusText, value);
+    }
+
     public RelayCommand OpenDataFolderCommand { get; }
+
+    public RelayCommand CheckUpdateCommand { get; }
+
+    public RelayCommand OpenGitHubCommand { get; }
+
+    public RelayCommand OpenReleasesCommand { get; }
+
+    public RelayCommand IgnoreUpdateCommand { get; }
 
     // ---------------- 生命周期 ----------------
 
@@ -784,6 +831,9 @@ public sealed class MainViewModel : ObservableObject
         {
             IsBusy = false;
         }
+
+        // 启动后静默检查一次更新；失败不打扰用户
+        _ = CheckForUpdatesAsync(manual: false);
     }
 
     public void SaveSettingsNow()
@@ -917,6 +967,20 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>随机模式下重新抽取「下一组」预览。</summary>
+    private void RerollNextPreview()
+    {
+        var preview = _engine.RerollNextGroup();
+        if (preview is null)
+        {
+            StatusMessage = "还没有可用的下一组";
+            return;
+        }
+
+        StatusMessage = string.Empty;
+        UpdateMonitorCards();
+    }
+
     private void SetMode(string? value)
     {
         var mode = string.Equals(value, "sequential", StringComparison.OrdinalIgnoreCase)
@@ -931,6 +995,8 @@ public sealed class MainViewModel : ObservableObject
         _settings.Mode = mode;
         OnPropertyChanged(nameof(IsSequential));
         OnPropertyChanged(nameof(IsRandom));
+        OnPropertyChanged(nameof(ShowRerollButton));
+        RerollNextCommand.RaiseCanExecuteChanged();
         ScheduleSave();
         _engine.OnSettingsChanged();
     }
@@ -976,6 +1042,124 @@ public sealed class MainViewModel : ObservableObject
         if (int.TryParse(value, out var index))
         {
             SelectedSection = Math.Clamp(index, 0, 2);
+        }
+    }
+
+    // ---------------- 更新检查 ----------------
+
+    private async Task CheckForUpdatesAsync(bool manual)
+    {
+        if (_updateChecking)
+        {
+            return;
+        }
+
+        _updateChecking = true;
+        if (manual)
+        {
+            UpdateStatusText = "正在检查更新…";
+        }
+
+        OnPropertyChanged(nameof(IsUpdateChecking));
+        CheckUpdateCommand.RaiseCanExecuteChanged();
+
+        try
+        {
+            var result = await _updates.CheckAsync().ConfigureAwait(true);
+            ApplyUpdateResult(result, manual);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn($"检查更新失败：{ex.Message}");
+            if (manual)
+            {
+                UpdateStatusText = "检查失败，请稍后重试";
+            }
+        }
+        finally
+        {
+            _updateChecking = false;
+            OnPropertyChanged(nameof(IsUpdateChecking));
+            CheckUpdateCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    private void ApplyUpdateResult(UpdateCheckResult result, bool manual)
+    {
+        if (!result.Success)
+        {
+            if (result.NoRelease)
+            {
+                if (manual)
+                {
+                    UpdateStatusText = "GitHub 上还没有发布版本";
+                }
+
+                return;
+            }
+
+            if (manual)
+            {
+                UpdateStatusText = "检查失败，请检查网络后重试";
+            }
+
+            return;
+        }
+
+        _latestVersion = result.LatestVersion;
+        _latestReleaseUrl = result.ReleaseUrl;
+
+        if (!HasUpdate)
+        {
+            UpdateStatusText = $"已是最新版本 v{_updates.CurrentVersion}";
+            NotifyUpdateState();
+            return;
+        }
+
+        UpdateStatusText = IsUpdateIgnored
+            ? $"发现新版本 v{_latestVersion} · 已忽略此版本"
+            : $"发现新版本 v{_latestVersion}（当前 v{_updates.CurrentVersion}）";
+
+        NotifyUpdateState();
+    }
+
+    private void IgnoreUpdate()
+    {
+        if (_latestVersion is null || !ShowUpdateBadge)
+        {
+            return;
+        }
+
+        _settings.IgnoredUpdateVersion = _latestVersion.ToString(3);
+        ScheduleSave();
+        UpdateStatusText = $"发现新版本 v{_latestVersion} · 已忽略此版本";
+        NotifyUpdateState();
+    }
+
+    private bool IsVersionIgnored(Version version)
+        => UpdateService.ParseVersion(_settings.IgnoredUpdateVersion) is { } ignored && ignored == version;
+
+    private void NotifyUpdateState()
+    {
+        OnPropertyChanged(nameof(HasUpdate));
+        OnPropertyChanged(nameof(IsUpdateIgnored));
+        OnPropertyChanged(nameof(ShowUpdateBadge));
+        IgnoreUpdateCommand.RaiseCanExecuteChanged();
+    }
+
+    private void OpenUrl(string url)
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"无法打开链接：{ex.Message}";
         }
     }
 
@@ -1091,6 +1275,7 @@ public sealed class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(HasError));
         OnPropertyChanged(nameof(Hint));
         OnPropertyChanged(nameof(HasHint));
+        OnPropertyChanged(nameof(ShowRerollButton));
         OnPropertyChanged(nameof(TrayToolTip));
 
         if (syncFolders)
@@ -1108,6 +1293,7 @@ public sealed class MainViewModel : ObservableObject
         NextCommand.RaiseCanExecuteChanged();
         PreviousCommand.RaiseCanExecuteChanged();
         TogglePauseCommand.RaiseCanExecuteChanged();
+        RerollNextCommand.RaiseCanExecuteChanged();
     }
 
     private void SyncFolders()

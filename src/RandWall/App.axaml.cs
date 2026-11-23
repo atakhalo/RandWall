@@ -59,7 +59,7 @@ public partial class App : Application
         var thumbnails = new ThumbnailService();
         var autoStart = new AutoStartService();
 
-        _viewModel = new MainViewModel(_settingsService, settings, _engine, thumbnails, autoStart);
+        _viewModel = new MainViewModel(_settingsService, settings, _engine, thumbnails, autoStart, new UpdateService());
 
         _window = new MainWindow { DataContext = _viewModel };
         _window.Closed += (_, _) => desktop.Shutdown();

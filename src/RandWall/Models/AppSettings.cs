@@ -42,6 +42,9 @@ public sealed class AppSettings
     /// <summary>启动后处于暂停状态，不自动切换。</summary>
     public bool StartPaused { get; set; }
 
+    /// <summary>被忽略的更新版本（规范化版本号，如 "1.1.0"）。</summary>
+    public string? IgnoredUpdateVersion { get; set; }
+
     /// <summary>顺序模式下的播放位置。</summary>
     public int Cursor { get; set; }
 
@@ -67,6 +70,7 @@ public sealed class AppSettings
             MinimizeToTray = MinimizeToTray,
             StartMinimized = StartMinimized,
             StartPaused = StartPaused,
+            IgnoredUpdateVersion = IgnoredUpdateVersion,
             Cursor = Cursor,
             LastGroupPaths = new List<string>(LastGroupPaths),
             SelectedSection = SelectedSection,

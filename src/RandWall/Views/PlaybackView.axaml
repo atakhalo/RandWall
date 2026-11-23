@@ -45,7 +45,26 @@
                                 Command="{Binding SelectPreviewTabCommand}" CommandParameter="2" />
                 </StackPanel>
               </StackPanel>
-              <TextBlock Grid.Column="1" Text="{Binding MonitorSummary}" Classes="muted" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Theme="{StaticResource ChipButton}"
+                      Command="{Binding RerollNextCommand}"
+                      IsVisible="{Binding ShowRerollButton}"
+                      ToolTip.Tip="随机模式下重新抽取下一组"
+                      HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Viewbox Width="12" Height="12">
+                    <Canvas Width="16" Height="16">
+                      <Rectangle Canvas.Left="1.3" Canvas.Top="1.3" Width="13.4" Height="13.4"
+                                 RadiusX="3.2" RadiusY="3.2" Stroke="#93AB9D" StrokeThickness="1.4" />
+                      <Ellipse Canvas.Left="4.1" Canvas.Top="4.1" Width="2.5" Height="2.5" Fill="#93AB9D" />
+                      <Ellipse Canvas.Left="9.4" Canvas.Top="4.1" Width="2.5" Height="2.5" Fill="#93AB9D" />
+                      <Ellipse Canvas.Left="6.75" Canvas.Top="6.75" Width="2.5" Height="2.5" Fill="#93AB9D" />
+                      <Ellipse Canvas.Left="4.1" Canvas.Top="9.4" Width="2.5" Height="2.5" Fill="#93AB9D" />
+                      <Ellipse Canvas.Left="9.4" Canvas.Top="9.4" Width="2.5" Height="2.5" Fill="#93AB9D" />
+                    </Canvas>
+                  </Viewbox>
+                  <TextBlock Text="重 roll" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
             </Grid>
 
             <ItemsControl ItemsSource="{Binding MonitorCards}" IsVisible="{Binding !HasPreviewEmpty}">

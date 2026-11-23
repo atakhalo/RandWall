@@ -91,6 +91,8 @@
                 <StackPanel Orientation="Horizontal" Spacing="11">
                   <Ellipse Width="5" Height="5" Classes="dot" VerticalAlignment="Center" />
                   <TextBlock Text="设置" VerticalAlignment="Center" />
+                  <Ellipse Width="6" Height="6" Fill="#E0645A" VerticalAlignment="Center"
+                           IsVisible="{Binding ShowUpdateBadge}" ToolTip.Tip="有新版本可用" />
                 </StackPanel>
               </Button>
             </StackPanel>
