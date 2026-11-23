@@ -1,0 +1,22 @@
+# 构建输出
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+publish*/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.sln.docstates
+
+# 工作区中的临时与清理目录
+z-TempForAI/
+z-DelForAI/
+
+# 系统文件
+Thumbs.db
+desktop.ini

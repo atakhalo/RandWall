@@ -1,0 +1,114 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RandWall.ViewModels"
+             x:Class="RandWall.Views.LibraryView"
+             x:DataType="vm:MainViewModel">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16">
+
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="6">
+          <TextBlock Text="壁纸库" Classes="pageTitle" />
+          <TextBlock Text="{Binding FolderSummary}" Classes="pageSubtitle" />
+        </StackPanel>
+        <Button Grid.Column="1" Theme="{StaticResource PrimaryButton}" Content="添加文件夹"
+                Click="OnAddFolderClick" VerticalAlignment="Center" />
+      </Grid>
+
+      <!-- 文件夹列表 -->
+      <Border Classes="card" Padding="16">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="壁纸文件夹" Classes="sectionTitle" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IncludeSubfolders}"
+                          OnContent="包含子文件夹" OffContent="仅本层" />
+          </Grid>
+
+          <ItemsControl ItemsSource="{Binding Folders}" IsVisible="{Binding HasFolders}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:FolderItemViewModel">
+                <Border Classes="row" Margin="0,0,0,8">
+                  <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                    <Button Theme="{StaticResource FolderIconButton}"
+                            Command="{Binding OpenCommand}"
+                            AutomationProperties.Name="打开文件夹"
+                            ToolTip.Tip="在资源管理器中打开"
+                            VerticalAlignment="Center">
+                      <Viewbox Width="16" Height="16">
+                        <Canvas Width="16" Height="16">
+                          <Path Data="M0,2.5 A2,2 0 0 1 2,0.5 H6 L8,2.5 H14 A2,2 0 0 1 16,4.5 V12 A2,2 0 0 1 14,14 H2 A2,2 0 0 1 0,12 Z"
+                                Fill="#4E7A63" />
+                        </Canvas>
+                      </Viewbox>
+                    </Button>
+
+                    <StackPanel Grid.Column="1" Margin="12,0" VerticalAlignment="Center" Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontSize="12.5" Foreground="#DEEBE3" />
+                      <TextBlock Text="{Binding Path}" FontSize="10.5" Foreground="#63786C"
+                                 TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="2" Text="{Binding CountText}" FontSize="10.5"
+                               Foreground="#7F9588" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                    <Button Grid.Column="3" Theme="{StaticResource GhostButton}" Content="移除"
+                            Command="{Binding RemoveCommand}" VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <StackPanel IsVisible="{Binding !HasFolders}" Spacing="6" Margin="0,6">
+            <TextBlock Text="还没有添加文件夹" FontSize="12.5" Foreground="#A9BDB1" />
+            <TextBlock Text="添加存放壁纸的文件夹（支持子文件夹），程序会自动收集 jpg / png / webp 等图片。"
+                       Classes="muted" TextWrapping="Wrap" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- 缩略图墙 -->
+      <Border Classes="card" Padding="16">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="图片预览" Classes="sectionTitle" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <TextBlock Text="加载中…" IsVisible="{Binding IsLoadingThumbnails}" Classes="muted" />
+              <TextBlock Text="{Binding ThumbnailSummary}" Classes="muted"
+                         ToolTip.Tip="从壁纸池按路径顺序均匀抽取，仅用于预览" />
+            </StackPanel>
+          </Grid>
+
+          <ItemsControl ItemsSource="{Binding Thumbnails}" IsVisible="{Binding HasThumbnails}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:ThumbnailItemViewModel">
+                <Border Width="148" Height="92" Margin="0,0,10,10" CornerRadius="10" ClipToBounds="True" Background="#0C1411"
+                        ToolTip.Tip="{Binding Path}">
+                  <Panel>
+                    <Image Source="{Binding Image}" Stretch="UniformToFill" IsVisible="{Binding HasImage}" />
+                    <TextBlock Text="{Binding FileName}" IsVisible="{Binding !HasImage}" FontSize="9.5"
+                               Foreground="#63786C" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" MaxWidth="120" />
+                    <Border VerticalAlignment="Bottom" Background="#B80A100D" Padding="7,4">
+                      <TextBlock Text="{Binding FileName}" FontSize="9" Foreground="#A9BDB1"
+                                 TextTrimming="CharacterEllipsis" />
+                    </Border>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <TextBlock Text="暂无图片。添加文件夹后，这里会显示其中的壁纸预览。"
+                     IsVisible="{Binding !HasThumbnails}" Classes="muted" />
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

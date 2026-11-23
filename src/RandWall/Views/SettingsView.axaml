@@ -1,0 +1,94 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RandWall.ViewModels"
+             x:Class="RandWall.Views.SettingsView"
+             x:DataType="vm:MainViewModel">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16">
+
+      <StackPanel Spacing="6">
+        <TextBlock Text="设置" Classes="pageTitle" />
+        <TextBlock Text="启动、驻留与数据位置" Classes="pageSubtitle" />
+      </StackPanel>
+
+      <!-- 启动与驻留 -->
+      <Border Classes="card" Padding="18">
+        <StackPanel Spacing="4">
+          <TextBlock Text="启动与驻留" Classes="sectionTitle" Margin="0,0,0,8" />
+
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6">
+            <StackPanel Spacing="2">
+              <TextBlock Text="开机自启" FontSize="13" Foreground="#DEEBE3" />
+              <TextBlock Text="登录 Windows 后自动在托盘运行" Classes="muted" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoStart}" OnContent="" OffContent=""
+                          VerticalAlignment="Center" />
+          </Grid>
+
+          <Separator />
+
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6">
+            <StackPanel Spacing="2">
+              <TextBlock Text="关闭时最小化到托盘" FontSize="13" Foreground="#DEEBE3" />
+              <TextBlock Text="点击关闭按钮时隐藏窗口，继续在后台轮换" Classes="muted" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTray}" OnContent="" OffContent=""
+                          VerticalAlignment="Center" />
+          </Grid>
+
+          <Separator />
+
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6">
+            <StackPanel Spacing="2">
+              <TextBlock Text="启动时最小化" FontSize="13" Foreground="#DEEBE3" />
+              <TextBlock Text="启动后直接驻留托盘，不显示主窗口" Classes="muted" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartMinimized}" OnContent="" OffContent=""
+                          VerticalAlignment="Center" />
+          </Grid>
+
+          <Separator />
+
+          <Grid ColumnDefinitions="*,Auto" Margin="0,6">
+            <StackPanel Spacing="2">
+              <TextBlock Text="启动时暂停" FontSize="13" Foreground="#DEEBE3" />
+              <TextBlock Text="启动后不自动切换，直到手动继续" Classes="muted" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartPaused}" OnContent="" OffContent=""
+                          VerticalAlignment="Center" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- 关于 -->
+      <Border Classes="card" Padding="18">
+        <StackPanel Spacing="12">
+          <TextBlock Text="关于" Classes="sectionTitle" />
+
+          <Grid ColumnDefinitions="86,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+            <TextBlock Text="版本" Classes="muted" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding VersionText}" FontSize="12" Foreground="#DEEBE3" />
+
+            <TextBlock Grid.Row="1" Text="配置目录" Classes="muted" VerticalAlignment="Center" />
+            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding DataFolderPath}" FontSize="11"
+                       Foreground="#7F9588" TextTrimming="CharacterEllipsis" />
+
+            <TextBlock Grid.Row="2" Text="壁纸池" Classes="muted" VerticalAlignment="Center" />
+            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PoolSummary}" FontSize="12" Foreground="#DEEBE3" />
+          </Grid>
+
+          <Button Theme="{StaticResource SecondaryButton}" Content="打开配置目录"
+                  Command="{Binding OpenDataFolderCommand}" HorizontalAlignment="Left" />
+
+          <TextBlock Text="所有设置会自动保存；关闭程序后再次启动会恢复上一次的壁纸位置。"
+                     Classes="muted" TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock Text="{Binding StatusMessage}"
+                 IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 FontSize="11" Foreground="#8CA396" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

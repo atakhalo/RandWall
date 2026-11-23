@@ -1,0 +1,241 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RandWall.ViewModels"
+             x:Class="RandWall.Views.PlaybackView"
+             x:DataType="vm:MainViewModel">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16">
+
+      <!-- 标题 -->
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="6">
+          <TextBlock Text="播放" Classes="pageTitle" />
+          <TextBlock Text="让桌面随时间为园林换一幅风景" Classes="pageSubtitle" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Classes="pill" IsVisible="{Binding IsBusy}">
+            <TextBlock Text="{Binding BusyText}" FontSize="11" Foreground="#A9BDB1" VerticalAlignment="Center" />
+          </Border>
+          <Border Classes="pill">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Ellipse Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding PlayStateText}" FontSize="11" Foreground="#A9BDB1" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- 当前壁纸 + 控制 -->
+      <Grid ColumnDefinitions="*,280" ColumnSpacing="16">
+        <Border Classes="card" Padding="16">
+          <StackPanel Spacing="12">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <TextBlock Text="壁纸预览" Classes="sectionTitle" VerticalAlignment="Center" />
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <ToggleButton Theme="{StaticResource TabButton}" Content="当前"
+                                IsChecked="{Binding IsCurrentTab, Mode=OneWay}"
+                                Command="{Binding SelectPreviewTabCommand}" CommandParameter="0" />
+                  <ToggleButton Theme="{StaticResource TabButton}" Content="上一组"
+                                IsChecked="{Binding IsPreviousTab, Mode=OneWay}"
+                                Command="{Binding SelectPreviewTabCommand}" CommandParameter="1" />
+                  <ToggleButton Theme="{StaticResource TabButton}" Content="下一组"
+                                IsChecked="{Binding IsNextTab, Mode=OneWay}"
+                                Command="{Binding SelectPreviewTabCommand}" CommandParameter="2" />
+                </StackPanel>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Text="{Binding MonitorSummary}" Classes="muted" VerticalAlignment="Center" />
+            </Grid>
+
+            <ItemsControl ItemsSource="{Binding MonitorCards}" IsVisible="{Binding !HasPreviewEmpty}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MonitorCardViewModel">
+                  <Border Width="222" Height="124" Margin="0,0,12,12" CornerRadius="12" ClipToBounds="True" Background="#0E1813">
+                    <Panel>
+                      <Image Source="{Binding Preview}" Stretch="UniformToFill" IsVisible="{Binding HasPreview}" />
+                      <TextBlock Text="等待壁纸" FontSize="11" Foreground="#4E6157"
+                                 IsVisible="{Binding !HasPreview}"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      <Border VerticalAlignment="Bottom" Background="#B8080F0C" Padding="10,7">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Spacing="1">
+                            <TextBlock Text="{Binding Title}" FontSize="10.5" Foreground="#DCEBE2" />
+                            <TextBlock Text="{Binding FileName}" FontSize="9.5" Foreground="#7F9588"
+                                       TextTrimming="CharacterEllipsis" MaxWidth="146" />
+                          </StackPanel>
+                          <TextBlock Grid.Column="1" Text="{Binding Subtitle}" FontSize="9.5" Foreground="#6E8377"
+                                     VerticalAlignment="Bottom" />
+                        </Grid>
+                      </Border>
+
+                      <Button Theme="{StaticResource OverlayIconButton}"
+                              Command="{Binding OpenCommand}"
+                              AutomationProperties.Name="在资源管理器中打开"
+                              ToolTip.Tip="在资源管理器中打开"
+                              HorizontalAlignment="Right" VerticalAlignment="Top" Margin="7"
+                              IsVisible="{Binding HasPath}">
+                        <Viewbox Width="13" Height="13">
+                          <Canvas Width="16" Height="16">
+                            <Path Data="M0,2.5 A2,2 0 0 1 2,0.5 H6 L8,2.5 H14 A2,2 0 0 1 16,4.5 V12 A2,2 0 0 1 14,14 H2 A2,2 0 0 1 0,12 Z"
+                                  Fill="#DCEBE2" />
+                          </Canvas>
+                        </Viewbox>
+                      </Button>
+                    </Panel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock Text="{Binding PreviewEmptyText}" IsVisible="{Binding HasPreviewEmpty}"
+                       Classes="muted" HorizontalAlignment="Center" Margin="0,26" />
+          </StackPanel>
+        </Border>
+
+        <!-- 控制卡 -->
+        <Border Grid.Column="1" Classes="card" Padding="18,18,18,16">
+          <StackPanel Spacing="16">
+            <StackPanel Spacing="3">
+              <TextBlock Text="轮换控制" Classes="sectionTitle" />
+              <TextBlock Text="{Binding PoolSummary}" Classes="muted" />
+            </StackPanel>
+
+            <StackPanel Spacing="8">
+              <TextBlock Text="{Binding CountdownText}" Classes="mono" />
+              <ProgressBar Value="{Binding CountdownProgress}" Minimum="0" Maximum="1" />
+              <TextBlock Text="{Binding NextSwitchCaption}" Classes="muted" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center" Margin="0,2">
+              <Button Theme="{StaticResource RoundButton}" Command="{Binding PreviousCommand}" ToolTip.Tip="上一组">
+                <Viewbox Width="14" Height="12">
+                  <Canvas Width="14" Height="12">
+                    <Rectangle Canvas.Left="0" Canvas.Top="0" Width="1.8" Height="12" RadiusX="0.9" RadiusY="0.9" Fill="#B7CBBE" />
+                    <Path Data="M13,0 L2.5,6 L13,12 Z" Fill="#B7CBBE" />
+                  </Canvas>
+                </Viewbox>
+              </Button>
+
+              <Button Theme="{StaticResource RoundPrimaryButton}" Command="{Binding TogglePauseCommand}" ToolTip.Tip="{Binding PauseButtonText}">
+                <Viewbox Width="14" Height="16">
+                  <Canvas Width="14" Height="16">
+                    <Path Data="M1,0 L13,8 L1,16 Z" Fill="#06130C" IsVisible="{Binding IsPaused}" />
+                    <Path Data="M1,0 H5.5 V16 H1 Z M8.5,0 H13 V16 H8.5 Z" Fill="#06130C" IsVisible="{Binding !IsPaused}" />
+                  </Canvas>
+                </Viewbox>
+              </Button>
+
+              <Button Theme="{StaticResource RoundButton}" Command="{Binding NextCommand}" ToolTip.Tip="下一组">
+                <Viewbox Width="14" Height="12">
+                  <Canvas Width="14" Height="12">
+                    <Rectangle Canvas.Left="12.2" Canvas.Top="0" Width="1.8" Height="12" RadiusX="0.9" RadiusY="0.9" Fill="#B7CBBE" />
+                    <Path Data="M1,0 L11.5,6 L1,12 Z" Fill="#B7CBBE" />
+                  </Canvas>
+                </Viewbox>
+              </Button>
+            </StackPanel>
+
+            <Button Theme="{StaticResource SecondaryButton}" Content="重新扫描壁纸" Command="{Binding RefreshCommand}"
+                    HorizontalAlignment="Stretch" />
+
+            <TextBlock Text="{Binding Hint}" IsVisible="{Binding HasHint}"
+                       FontSize="11" Foreground="#7F9588" TextWrapping="Wrap" />
+
+            <TextBlock Text="{Binding ErrorMessage}" IsVisible="{Binding HasError}"
+                       FontSize="11" Foreground="{DynamicResource Danger}" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- 播放设置 -->
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+        <Border Classes="card" Padding="18">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="2">
+              <TextBlock Text="播放模式" Classes="sectionTitle" />
+              <TextBlock Text="按顺序播放，或随机抽取" Classes="muted" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ToggleButton Theme="{StaticResource SegmentButton}" Content="顺序"
+                           IsChecked="{Binding IsSequential, Mode=OneWay}"
+                           Command="{Binding SetModeCommand}" CommandParameter="sequential" />
+              <ToggleButton Theme="{StaticResource SegmentButton}" Content="随机"
+                           IsChecked="{Binding IsRandom, Mode=OneWay}"
+                           Command="{Binding SetModeCommand}" CommandParameter="random" />
+            </StackPanel>
+
+            <Separator />
+
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="切换间隔" Classes="sectionTitle" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding IntervalText}" Classes="accentText" VerticalAlignment="Center" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <NumericUpDown Value="{Binding IntervalValue}" Minimum="0" Maximum="43200" Increment="1"
+                             FormatString="0.##" ShowButtonSpinner="False" HorizontalAlignment="Stretch" />
+              <ComboBox Grid.Column="1" Width="96" ItemsSource="{Binding IntervalUnits}"
+                        SelectedItem="{Binding SelectedIntervalUnit}" VerticalAlignment="Center" />
+            </Grid>
+
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Theme="{StaticResource ChipButton}" Content="5 分钟" Command="{Binding SetIntervalCommand}" CommandParameter="300" />
+              <Button Theme="{StaticResource ChipButton}" Content="30 分钟" Command="{Binding SetIntervalCommand}" CommandParameter="1800" />
+              <Button Theme="{StaticResource ChipButton}" Content="1 小时" Command="{Binding SetIntervalCommand}" CommandParameter="3600" />
+              <Button Theme="{StaticResource ChipButton}" Content="6 小时" Command="{Binding SetIntervalCommand}" CommandParameter="21600" />
+              <Button Theme="{StaticResource ChipButton}" Content="1 天" Command="{Binding SetIntervalCommand}" CommandParameter="86400" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Classes="card" Padding="18">
+          <StackPanel Spacing="14">
+            <StackPanel Spacing="2">
+              <TextBlock Text="多屏显示" Classes="sectionTitle" />
+              <TextBlock Text="{Binding MonitorSummary}" Classes="muted" />
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ToggleButton Theme="{StaticResource SegmentButton}" Content="每屏不同"
+                           IsChecked="{Binding IsPerMonitor, Mode=OneWay}"
+                           Command="{Binding SetLayoutCommand}" CommandParameter="per" />
+              <ToggleButton Theme="{StaticResource SegmentButton}" Content="全部相同"
+                           IsChecked="{Binding IsSameOnAll, Mode=OneWay}"
+                           Command="{Binding SetLayoutCommand}" CommandParameter="same" />
+            </StackPanel>
+
+            <Separator />
+
+            <TextBlock Text="缩放方式" Classes="sectionTitle" />
+
+            <ComboBox ItemsSource="{Binding ScaleOptions}" SelectedItem="{Binding SelectedScale}" HorizontalAlignment="Stretch">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:ScaleOption">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding Label}" FontSize="12.5" />
+                    <TextBlock Text="{Binding Hint}" FontSize="10.5" Foreground="#6E8377" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <TextBlock Text="选择“跨屏”时一张图片会横跨所有显示器，并自动切换为“全部相同”。"
+                       Classes="muted" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </Grid>
+
+      <!-- 提示行 -->
+      <TextBlock Text="{Binding StatusMessage}"
+                 IsVisible="{Binding StatusMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                 FontSize="11" Foreground="#8CA396" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,125 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RandWall.ViewModels"
+        xmlns:views="using:RandWall.Views"
+        x:Class="RandWall.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="RandWall 园林"
+        Width="1160" Height="820"
+        MinWidth="980" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        Icon="avares://RandWall/Assets/AppIcon.ico"
+        Background="#0A100D">
+
+  <Window.Background>
+    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+      <GradientStop Color="#0C1511" Offset="0" />
+      <GradientStop Color="#080E0B" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Background>
+
+  <Panel>
+    <!-- 背景光晕 -->
+    <Border IsHitTestVisible="False" Opacity="0.7">
+      <Border.Background>
+        <RadialGradientBrush Center="14%,0%" GradientOrigin="14%,0%" RadiusX="72%" RadiusY="58%">
+          <GradientStop Color="#1C4E3A" Offset="0" />
+          <GradientStop Color="#00160E0A" Offset="1" />
+        </RadialGradientBrush>
+      </Border.Background>
+    </Border>
+
+    <Grid RowDefinitions="38,*">
+
+      <!-- ============ 自绘标题栏 ============ -->
+      <Grid Grid.Row="0" Background="Transparent" PointerPressed="OnTitleBarPointerPressed">
+        <StackPanel Orientation="Horizontal" Spacing="9" Margin="16,0" VerticalAlignment="Center">
+          <Image Source="avares://RandWall/Assets/AppIcon.png" Width="17" Height="17" VerticalAlignment="Center" />
+          <TextBlock Text="RandWall" FontSize="12.5" FontWeight="SemiBold" Foreground="#EAF3ED" VerticalAlignment="Center" />
+          <Border Background="#15221C" CornerRadius="4" Padding="6,1" VerticalAlignment="Center">
+            <TextBlock Text="园林" FontSize="9.5" Foreground="#7E9487" />
+          </Border>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button Theme="{StaticResource CaptionButton}" Click="OnMinimizeClick" ToolTip.Tip="最小化">
+            <Path Data="M0,0 H10" Stroke="#8CA396" StrokeThickness="1" StrokeLineCap="Round" />
+          </Button>
+          <Button Theme="{StaticResource CaptionButton}" Click="OnMaximizeClick" ToolTip.Tip="最大化">
+            <Path Name="MaxIconPath" Data="M0.5,0.5 H9.5 V9.5 H0.5 Z" Stroke="#8CA396" StrokeThickness="1" />
+          </Button>
+          <Button Theme="{StaticResource CloseCaptionButton}" Click="OnCloseClick" ToolTip.Tip="关闭">
+            <Path Data="M0,0 L9,9 M9,0 L0,9" Stroke="#8CA396" StrokeThickness="1.1" StrokeLineCap="Round" />
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- ============ 主体 ============ -->
+      <Grid Grid.Row="1" ColumnDefinitions="212,*">
+
+        <!-- 侧栏 -->
+        <Border Grid.Column="0" Background="#0A110E" BorderBrush="#16221C" BorderThickness="0,1,1,0">
+          <Grid RowDefinitions="*,Auto" Margin="12,16,12,14">
+
+            <StackPanel Spacing="3">
+              <TextBlock Text="工作区" FontSize="10" Foreground="#51655A" Margin="12,0,0,10" />
+
+              <Button Theme="{StaticResource NavButton}"
+                      Classes.active="{Binding IsPlaybackPage}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="0">
+                <StackPanel Orientation="Horizontal" Spacing="11">
+                  <Ellipse Width="5" Height="5" Classes="dot" VerticalAlignment="Center" />
+                  <TextBlock Text="播放" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+
+              <Button Theme="{StaticResource NavButton}"
+                      Classes.active="{Binding IsLibraryPage}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="1">
+                <StackPanel Orientation="Horizontal" Spacing="11">
+                  <Ellipse Width="5" Height="5" Classes="dot" VerticalAlignment="Center" />
+                  <TextBlock Text="壁纸库" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+
+              <Button Theme="{StaticResource NavButton}"
+                      Classes.active="{Binding IsSettingsPage}"
+                      Command="{Binding SelectSectionCommand}" CommandParameter="2">
+                <StackPanel Orientation="Horizontal" Spacing="11">
+                  <Ellipse Width="5" Height="5" Classes="dot" VerticalAlignment="Center" />
+                  <TextBlock Text="设置" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <!-- 底部状态卡 -->
+            <Border Grid.Row="1" Classes="card" Padding="13" Margin="0,12,0,0">
+              <StackPanel Spacing="9">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="{Binding PlayStateText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#D7E7DC"
+                             VerticalAlignment="Center" />
+                  <Ellipse Grid.Column="1" Width="6" Height="6" Fill="{DynamicResource Accent}" VerticalAlignment="Center" />
+                </Grid>
+                <ProgressBar Value="{Binding CountdownProgress}" Minimum="0" Maximum="1" Height="4" />
+                <TextBlock Text="{Binding NextSwitchText}" FontSize="10.5" Foreground="#7B9084" TextWrapping="Wrap" />
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Border>
+
+        <!-- 内容区 -->
+        <Grid Grid.Column="1" Margin="26,20,26,22">
+          <views:PlaybackView IsVisible="{Binding IsPlaybackPage}" />
+          <views:LibraryView IsVisible="{Binding IsLibraryPage}" />
+          <views:SettingsView IsVisible="{Binding IsSettingsPage}" />
+        </Grid>
+      </Grid>
+    </Grid>
+
+    <!-- 窗口描边 -->
+    <Border BorderBrush="#1A2620" BorderThickness="1" IsHitTestVisible="False" />
+  </Panel>
+</Window>
