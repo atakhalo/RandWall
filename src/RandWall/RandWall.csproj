@@ -3,6 +3,9 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- 运行时向前滚动：优先使用已安装的 .NET 8 桌面运行时（8.0.x 取最高补丁），
+         仅当目标机没有 8 时才使用更高的主版本（9 / 10）。 -->
+    <RollForward>Major</RollForward>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>

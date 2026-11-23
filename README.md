@@ -29,7 +29,7 @@
 dotnet run --project src/RandWall/RandWall.csproj
 ```
 
-发布给其他人使用时，`publish` 目录是「框架依赖」产物：**必须把整个目录一起分发**，exe 不能单独拿走，目标机需要安装 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)。也可以用脚本生成另外两种形态：
+发布给其他人使用时，`publish` 目录是「框架依赖」产物：**必须把整个目录一起分发**，exe 不能单独拿走，目标机需要 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0)。运行时采用**向前滚动**策略：优先使用已安装的 8.0.x（取最高补丁）；如果目标机没装 8，会自动改用已安装的更高主版本（9 / 10）。也可以用脚本生成另外两种形态：
 
 ```powershell
 .\scripts\publish.ps1              # 框架依赖目录（默认，体积最小）
@@ -39,8 +39,8 @@ dotnet run --project src/RandWall/RandWall.csproj
 
 | 形态 | 分发内容 | 目标机要求 |
 | --- | --- | --- |
-| framework（默认） | 整个 publish 目录（约 26 MB） | 已安装 .NET 8 桌面运行时 |
-| single | 单个 `RandWall.exe`（约 26 MB） | 已安装 .NET 8 桌面运行时 |
+| framework（默认） | 整个 publish 目录（约 26 MB） | 已安装 .NET 8 桌面运行时（无 8 时自动用 9 / 10） |
+| single | 单个 `RandWall.exe`（约 26 MB） | 已安装 .NET 8 桌面运行时（无 8 时自动用 9 / 10） |
 | selfcontained | 单个 `RandWall.exe`（约 90 MB） | 无 |
 
 首次启动后，进入「壁纸库」→「添加文件夹」，选择存放壁纸的目录即可开始自动轮换。

@@ -1,7 +1,7 @@
 # 发布脚本：生成可分发的 RandWall 包
 #
-#   .\scripts\publish.ps1 framework      依赖 .NET 8 桌面运行时，整个目录一起分发（体积最小）
-#   .\scripts\publish.ps1 single         依赖 .NET 8 桌面运行时，单个 exe
+#   .\scripts\publish.ps1 framework      依赖 .NET 8 桌面运行时（无 8 时自动用 9/10），整个目录一起分发（体积最小）
+#   .\scripts\publish.ps1 single         依赖 .NET 8 桌面运行时（无 8 时自动用 9/10），单个 exe
 #   .\scripts\publish.ps1 selfcontained  自带运行时，单个 exe，目标机不需要安装 .NET（体积最大）
 #
 param(
