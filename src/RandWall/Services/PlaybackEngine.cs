@@ -29,6 +29,8 @@ public sealed class PlaybackEngine : IDisposable
     private int _bagPos;
     private int _cursor;
     private DateTimeOffset _nextDue;
+    private DateTimeOffset _periodStart;
+    private TimeSpan _periodLength;
     private TimeSpan _pausedRemaining = TimeSpan.Zero;
     private bool _paused;
     private bool _disposed;
@@ -107,7 +109,14 @@ public sealed class PlaybackEngine : IDisposable
     {
         get
         {
-            var total = Interval.TotalSeconds;
+            // 整点基准下实际周期可能短于名义间隔（例如 24 分 → 30 分只有 6 分钟），
+            // 进度按本周期实际长度计算，避免一开始就显示 40%。
+            var total = _periodLength.TotalSeconds;
+            if (total <= 0)
+            {
+                total = Interval.TotalSeconds;
+            }
+
             if (total <= 0)
             {
                 return 0;
@@ -156,7 +165,11 @@ public sealed class PlaybackEngine : IDisposable
         if (_settings.StartPaused)
         {
             _paused = true;
-            _pausedRemaining = Interval;
+            var now = DateTimeOffset.Now;
+            _nextDue = ComputeNextDue(now);
+            _periodStart = now;
+            _periodLength = _nextDue - now;
+            _pausedRemaining = _periodLength;
         }
         else if (restoreLastGroup && TryRestoreLastGroup())
         {
@@ -340,7 +353,11 @@ public sealed class PlaybackEngine : IDisposable
         _pausedRemaining = Remaining;
         if (_pausedRemaining <= TimeSpan.Zero)
         {
-            _pausedRemaining = Interval;
+            var now = DateTimeOffset.Now;
+            _nextDue = ComputeNextDue(now);
+            _periodStart = now;
+            _periodLength = _nextDue - now;
+            _pausedRemaining = _periodLength;
         }
 
         _paused = true;
@@ -357,8 +374,23 @@ public sealed class PlaybackEngine : IDisposable
         }
 
         _paused = false;
-        var remaining = _pausedRemaining > TimeSpan.Zero ? _pausedRemaining : Interval;
-        _nextDue = DateTimeOffset.Now + remaining;
+        var now = DateTimeOffset.Now;
+
+        if (_settings.AlignToClock)
+        {
+            // 整点基准：继续后重新对齐到下一个整点，不保留暂停前的剩余时间
+            _periodStart = now;
+            _nextDue = ComputeNextDue(now);
+            _periodLength = _nextDue - now;
+        }
+        else
+        {
+            var remaining = _pausedRemaining > TimeSpan.Zero ? _pausedRemaining : Interval;
+            _nextDue = now + remaining;
+            _periodStart = now - (Interval - remaining);
+            _periodLength = Interval;
+        }
+
         _timer.Start();
         Changed?.Invoke(this, EventArgs.Empty);
         Tick?.Invoke(this, EventArgs.Empty);
@@ -379,13 +411,14 @@ public sealed class PlaybackEngine : IDisposable
     /// <summary>间隔或模式改变后刷新计时。</summary>
     public void OnSettingsChanged()
     {
+        var now = DateTimeOffset.Now;
+        _periodStart = now;
+        _nextDue = ComputeNextDue(now);
+        _periodLength = _nextDue - now;
+
         if (_paused)
         {
-            _pausedRemaining = Interval;
-        }
-        else
-        {
-            _nextDue = DateTimeOffset.Now + Interval;
+            _pausedRemaining = _periodLength;
         }
 
         InvalidateNextPreview();
@@ -469,13 +502,30 @@ public sealed class PlaybackEngine : IDisposable
             return;
         }
 
-        _nextDue = DateTimeOffset.Now + Interval;
+        var now = DateTimeOffset.Now;
+        _periodStart = now;
+        _nextDue = ComputeNextDue(now);
+        _periodLength = _nextDue - now;
+
         if (!_timer.IsEnabled)
         {
             _timer.Start();
         }
 
         Tick?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>计算下一次切换的绝对时间：普通模式从当前时间起算，整点基准对齐到整点网格。</summary>
+    private DateTimeOffset ComputeNextDue(DateTimeOffset now)
+    {
+        if (!_settings.AlignToClock)
+        {
+            return now + Interval;
+        }
+
+        var unit = _settings.IntervalUnit
+                   ?? ClockAlignedSchedule.InferUnit(_settings.IntervalSeconds);
+        return ClockAlignedSchedule.NextDue(now, Interval, unit);
     }
 
     private void OnTimerTick(object? sender, EventArgs e)

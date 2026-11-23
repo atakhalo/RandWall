@@ -180,9 +180,23 @@
 
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
               <NumericUpDown Value="{Binding IntervalValue}" Minimum="0" Maximum="43200" Increment="1"
-                             FormatString="0.##" ShowButtonSpinner="False" HorizontalAlignment="Stretch" />
+                             FormatString="0.##" ShowButtonSpinner="False" HorizontalAlignment="Stretch"
+                             IsVisible="{Binding !UseAlignedMinutePicker}" />
+              <ComboBox ItemsSource="{Binding AlignedMinuteOptions}"
+                        SelectedItem="{Binding SelectedAlignedMinute}"
+                        HorizontalAlignment="Stretch"
+                        IsVisible="{Binding UseAlignedMinutePicker}" />
               <ComboBox Grid.Column="1" Width="96" ItemsSource="{Binding IntervalUnits}"
                         SelectedItem="{Binding SelectedIntervalUnit}" VerticalAlignment="Center" />
+            </Grid>
+
+            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+              <StackPanel Spacing="2">
+                <TextBlock Text="整点基准" FontSize="13" Foreground="#DEEBE3" />
+                <TextBlock Text="{Binding AlignToClockHint}" Classes="muted" TextWrapping="Wrap" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding AlignToClock}" OnContent="" OffContent=""
+                            VerticalAlignment="Center" />
             </Grid>
 
             <StackPanel Orientation="Horizontal" Spacing="6">

@@ -21,6 +21,12 @@ public sealed class AppSettings
     /// <summary>自动切换间隔（秒）。范围 60 秒 ~ 30 天。</summary>
     public long IntervalSeconds { get; set; } = 30 * 60;
 
+    /// <summary>切换间隔的显示单位；null 表示旧配置没有记录，按秒数推断。</summary>
+    public IntervalUnit? IntervalUnit { get; set; }
+
+    /// <summary>整点基准：间隔从整点起算，而不是从当前时间起算。</summary>
+    public bool AlignToClock { get; set; }
+
     /// <summary>旧版字段：间隔（分钟）。只用于读取旧配置，写入时为 null 不落盘。</summary>
     [JsonInclude]
     public int? IntervalMinutes { get; set; }
@@ -55,6 +61,8 @@ public sealed class AppSettings
             MonitorMode = MonitorMode,
             Scale = Scale,
             IntervalSeconds = IntervalSeconds,
+            IntervalUnit = IntervalUnit,
+            AlignToClock = AlignToClock,
             AutoStart = AutoStart,
             MinimizeToTray = MinimizeToTray,
             StartMinimized = StartMinimized,

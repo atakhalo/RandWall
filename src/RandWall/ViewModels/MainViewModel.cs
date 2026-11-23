@@ -34,9 +34,9 @@ public sealed class MainViewModel : ObservableObject
     private string _statusMessage = string.Empty;
     private CancellationTokenSource? _thumbnailCts;
 
-    private static readonly IntervalUnitOption UnitMinutes = new(60, "分钟");
-    private static readonly IntervalUnitOption UnitHours = new(3600, "小时");
-    private static readonly IntervalUnitOption UnitDays = new(86400, "天");
+    private static readonly IntervalUnitOption UnitMinutes = new(60, "分钟", IntervalUnit.Minutes);
+    private static readonly IntervalUnitOption UnitHours = new(3600, "小时", IntervalUnit.Hours);
+    private static readonly IntervalUnitOption UnitDays = new(86400, "天", IntervalUnit.Days);
 
     private IntervalUnitOption _intervalUnit;
     private decimal? _intervalValue;
@@ -76,8 +76,14 @@ public sealed class MainViewModel : ObservableObject
         _selectedScale = ScaleOptions.First(o => o.Value == _settings.Scale);
 
         IntervalUnits = new[] { UnitMinutes, UnitHours, UnitDays };
-        _intervalUnit = PickBestUnit(_settings.IntervalSeconds);
+        _intervalUnit = _settings.IntervalUnit is { } savedUnit
+            ? OptionFor(savedUnit)
+            : PickBestUnit(_settings.IntervalSeconds);
         _intervalValue = ToDisplay(_settings.IntervalSeconds, _intervalUnit);
+        _settings.IntervalUnit ??= _intervalUnit.Unit;
+
+        // 配置里可能存有与「整点基准」不兼容的分钟值，启动时先校正
+        EnsureAlignedMinutes();
 
         NextCommand = new RelayCommand(() => _ = _engine.ApplyNextAsync(), () => HasWallpapers && !IsBusy);
         PreviousCommand = new RelayCommand(() => _ = _engine.ApplyPreviousAsync(), () => _engine.History.Count > 1);
@@ -268,6 +274,7 @@ public sealed class MainViewModel : ObservableObject
 
             _intervalUnit = value;
             OnPropertyChanged();
+            _settings.IntervalUnit = value.Unit;
 
             // 切换单位时保持总时长不变，只换算显示值
             _syncingInterval = true;
@@ -275,6 +282,19 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(IntervalValue));
             _syncingInterval = false;
             OnPropertyChanged(nameof(IntervalText));
+
+            // 整点基准下分钟只能取 60 的约数，切到分钟时把旧值吸附过去
+            if (_settings.AlignToClock && value == UnitMinutes)
+            {
+                EnsureAlignedMinutes();
+            }
+
+            OnPropertyChanged(nameof(UseAlignedMinutePicker));
+            OnPropertyChanged(nameof(SelectedAlignedMinute));
+            OnPropertyChanged(nameof(AlignToClockHint));
+
+            ScheduleSave();
+            _engine.OnSettingsChanged();
         }
     }
 
@@ -310,6 +330,135 @@ public sealed class MainViewModel : ObservableObject
         ScheduleSave();
     }
 
+    /// <summary>整点基准：开启后切换时间对齐到整点，而不是从当前时刻起算。</summary>
+    public bool AlignToClock
+    {
+        get => _settings.AlignToClock;
+        set
+        {
+            if (value == _settings.AlignToClock)
+            {
+                return;
+            }
+
+            _settings.AlignToClock = value;
+
+            if (value && _intervalUnit == UnitMinutes)
+            {
+                EnsureAlignedMinutes();
+            }
+
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(UseAlignedMinutePicker));
+            OnPropertyChanged(nameof(SelectedAlignedMinute));
+            OnPropertyChanged(nameof(AlignToClockHint));
+            ScheduleSave();
+            _engine.OnSettingsChanged();
+        }
+    }
+
+    public string AlignToClockHint
+    {
+        get
+        {
+            if (!_settings.AlignToClock)
+            {
+                return "关闭时从当前时刻开始计时";
+            }
+
+            if (_intervalUnit == UnitHours)
+            {
+                return "以整点起算：例如间隔 2 小时，会在 14:00、16:00 切换";
+            }
+
+            if (_intervalUnit == UnitDays)
+            {
+                return "以 0 点起算：例如间隔 1 天，会在每天 00:00 切换";
+            }
+
+            return "以整点起算：例如 24 分、间隔 10 分钟，下次在 30 分";
+        }
+    }
+
+    /// <summary>整点基准 + 分钟单位时，输入框换成「能整除 60」的下拉。</summary>
+    public bool UseAlignedMinutePicker => _settings.AlignToClock && _intervalUnit == UnitMinutes;
+
+    public IReadOnlyList<AlignedMinuteOption> AlignedMinuteOptions { get; } = AlignedMinuteOption.CreateAll();
+
+    public AlignedMinuteOption? SelectedAlignedMinute
+    {
+        get
+        {
+            var minutes = Math.Max(1, _settings.IntervalSeconds / 60);
+            foreach (var option in AlignedMinuteOptions)
+            {
+                if (option.Minutes == minutes)
+                {
+                    return option;
+                }
+            }
+
+            return null;
+        }
+        set
+        {
+            if (value is null || value.Minutes <= 0)
+            {
+                return;
+            }
+
+            var seconds = value.Minutes * 60;
+            if (seconds == _settings.IntervalSeconds)
+            {
+                return;
+            }
+
+            ApplyIntervalSeconds(seconds, keepUnit: true);
+        }
+    }
+
+    /// <summary>把当前分钟间隔吸附到最近的「60 的约数」。</summary>
+    private void EnsureAlignedMinutes()
+    {
+        if (!_settings.AlignToClock || _intervalUnit != UnitMinutes)
+        {
+            return;
+        }
+
+        var seconds = _settings.IntervalSeconds;
+        var minutes = (long)Math.Round(seconds / 60.0);
+        var target = AlignedMinuteOptions[0];
+
+        foreach (var option in AlignedMinuteOptions)
+        {
+            var distance = Math.Abs(option.Minutes - minutes);
+            var bestDistance = Math.Abs(target.Minutes - minutes);
+            if (distance < bestDistance
+                || (distance == bestDistance && option.Minutes < target.Minutes))
+            {
+                target = option;
+            }
+        }
+
+        if (target.Minutes * 60 == seconds)
+        {
+            return;
+        }
+
+        _settings.IntervalSeconds = target.Minutes * 60;
+
+        _syncingInterval = true;
+        _intervalValue = ToDisplay(_settings.IntervalSeconds, _intervalUnit);
+        OnPropertyChanged(nameof(IntervalValue));
+        _syncingInterval = false;
+
+        OnPropertyChanged(nameof(IntervalText));
+        OnPropertyChanged(nameof(SelectedAlignedMinute));
+        StatusMessage = $"整点基准下分钟间隔需能整除 60，已从 {minutes} 分钟调整为 {target.Minutes} 分钟";
+        ScheduleSave();
+        _engine.OnSettingsChanged();
+    }
+
     private void SetInterval(string? value)
     {
         if (!long.TryParse(value, out var seconds))
@@ -320,32 +469,46 @@ public sealed class MainViewModel : ObservableObject
         ApplyIntervalSeconds(seconds);
     }
 
-    private void ApplyIntervalSeconds(long seconds)
+    private void ApplyIntervalSeconds(long seconds, bool keepUnit = false)
     {
         seconds = Math.Clamp(seconds, SettingsService.MinIntervalSeconds, SettingsService.MaxIntervalSeconds);
         _settings.IntervalSeconds = seconds;
 
-        var unit = PickBestUnit(seconds);
+        var unit = keepUnit ? _intervalUnit : PickBestUnit(seconds);
         _syncingInterval = true;
         _intervalUnit = unit;
         _intervalValue = ToDisplay(seconds, unit);
         OnPropertyChanged(nameof(IntervalValue));
         OnPropertyChanged(nameof(SelectedIntervalUnit));
         _syncingInterval = false;
+        _settings.IntervalUnit = unit.Unit;
 
         OnPropertyChanged(nameof(IntervalText));
+        OnPropertyChanged(nameof(UseAlignedMinutePicker));
+        OnPropertyChanged(nameof(SelectedAlignedMinute));
+        OnPropertyChanged(nameof(AlignToClockHint));
         ScheduleSave();
         _engine.OnSettingsChanged();
     }
 
     private static IntervalUnitOption PickBestUnit(long seconds)
     {
-        if (seconds >= 86400)
+        return ClockAlignedSchedule.InferUnit(seconds) switch
         {
-            return UnitDays;
-        }
+            IntervalUnit.Days => UnitDays,
+            IntervalUnit.Hours => UnitHours,
+            _ => UnitMinutes,
+        };
+    }
 
-        return seconds >= 3600 ? UnitHours : UnitMinutes;
+    private static IntervalUnitOption OptionFor(IntervalUnit unit)
+    {
+        return unit switch
+        {
+            IntervalUnit.Days => UnitDays,
+            IntervalUnit.Hours => UnitHours,
+            _ => UnitMinutes,
+        };
     }
 
     private static decimal? ToDisplay(long seconds, IntervalUnitOption unit)
